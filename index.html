@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Pond — a calm sound space</title>
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <h1 class="title">pond</h1>
+    <button class="lang-btn" id="langbtn">UA</button>
+  </div>
+
+  <nav class="tab-bar">
+    <button class="tab active" data-tab="pond" id="tab-btn-pond">pond</button>
+    <button class="tab" data-tab="theremin" id="tab-btn-theremin">theremin</button>
+  </nav>
+
+  <div class="tab-section active" id="tab-pond">
+    <div class="stage">
+      <canvas id="pond"></canvas>
+      <div id="picker-overlay"></div>
+      <div class="hint" id="hint">touch anywhere — pick a family, then a sound</div>
+    </div>
+
+    <div class="controls">
+      <button class="round" id="playbtn" aria-label="Play">
+        <svg class="icon" id="playicon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="6 4 20 12 6 20 6 4" fill="currentColor" stroke="none"></polygon>
+        </svg>
+      </button>
+
+      <div class="tempo-wrap">
+        <span class="tempo-label" id="tempo-slow">slow</span>
+        <input type="range" id="tempo" min="40" max="120" value="64" step="1" aria-label="Tempo" />
+        <span class="tempo-label" id="tempo-lively">lively</span>
+      </div>
+
+      <button class="pill" id="clearbtn" aria-label="Clear all">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"></path>
+        </svg>
+        <span id="clearlabel">clear</span>
+      </button>
+    </div>
+
+    <div class="legend" id="legend"></div>
+  </div>
+
+  <div class="tab-section" id="tab-theremin">
+    <div class="stage" id="theremin-stage">
+      <canvas id="theremin-canvas"></canvas>
+      <div class="hint" id="theremin-hint">hold anywhere · left–right: pitch · up–down: volume</div>
+    </div>
+    <div class="theremin-info">
+      <span class="theremin-stat" id="theremin-note">—</span>
+      <span class="theremin-stat" id="theremin-freq">— Hz</span>
+      <span class="theremin-stat" id="theremin-players">1 player</span>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modal-backdrop">
+  <div class="modal">
+    <p class="modal-msg" id="modal-msg">Clear all orbs?</p>
+    <div class="modal-actions">
+      <button class="pill" id="modal-cancel"><span>Cancel</span></button>
+      <button class="pill danger" id="modal-confirm"><span>Clear</span></button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+<script src="app.js"></script>
+<script src="theremin.js"></script>
+</body>
+</html>
