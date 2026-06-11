@@ -54,10 +54,28 @@
       <canvas id="theremin-canvas"></canvas>
       <div class="hint" id="theremin-hint">hold anywhere · left–right: pitch · up–down: volume</div>
     </div>
+
+    <div class="room-panel">
+      <div id="room-idle">
+        <input class="room-input" id="room-input" type="text" placeholder="room code"
+               maxlength="12" autocomplete="off" autocapitalize="characters" spellcheck="false" />
+        <button class="pill" id="room-join-btn"><span id="room-join-label">Join</span></button>
+      </div>
+      <div id="room-active" hidden>
+        <span class="room-badge">
+          <span id="room-code-display"></span>
+          &middot;
+          <span id="room-player-count">1/2</span>
+        </span>
+        <button class="pill" id="room-leave-btn"><span id="room-leave-label">Leave</span></button>
+      </div>
+      <div id="room-error" class="room-error-msg" hidden></div>
+    </div>
+
     <div class="theremin-info">
       <span class="theremin-stat" id="theremin-note">—</span>
       <span class="theremin-stat" id="theremin-freq">— Hz</span>
-      <span class="theremin-stat" id="theremin-players">1 player</span>
+      <span class="theremin-stat" id="theremin-players">—</span>
     </div>
   </div>
 </div>

@@ -48,6 +48,9 @@
       tabPond: 'pond', tabTheremin: 'theremin',
       thereminHint: 'hold anywhere · left–right: pitch · up–down: volume',
       thereminPlayers: n => n === 1 ? '1 player' : `${n} players`,
+      join: 'Join', leave: 'Leave',
+      roomPlaceholder: 'room code',
+      roomFull: 'Room is full', connFailed: 'Connection failed',
     },
     ua: {
       hint: 'торкніться будь-де — оберіть категорію, а потім звук',
@@ -60,6 +63,9 @@
       tabPond: 'ставок', tabTheremin: 'терємін',
       thereminHint: 'утримуйте · ліво-право: висота · вгору-вниз: гучність',
       thereminPlayers: n => n === 1 ? '1 гравець' : `${n} гравці`,
+      join: 'Приєднатись', leave: 'Вийти',
+      roomPlaceholder: 'код кімнати',
+      roomFull: 'Кімната заповнена', connFailed: 'Помилка підключення',
     }
   };
   let lang = 'en';

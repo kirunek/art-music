@@ -1,6 +1,9 @@
 (function(){
   "use strict";
 
+  // Update this after Railway deploy — use wss:// for production
+  const WS_URL = 'wss://YOUR-APP.up.railway.app';
+
   const canvas = document.getElementById('theremin-canvas');
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
@@ -25,8 +28,7 @@
   function yToGain(y){ return Math.max(0, Math.min(1, 1 - y / H)); }
   function freqToNoteName(freq){
     const midi = Math.round(12 * Math.log2(freq / 440) + 69);
-    const oct = Math.floor(midi / 12) - 1;
-    return NOTE_NAMES[((midi % 12) + 12) % 12] + oct;
+    return NOTE_NAMES[((midi % 12) + 12) % 12] + (Math.floor(midi / 12) - 1);
   }
 
   // ----- audio -----
@@ -63,67 +65,137 @@
     voices.delete(id);
   }
 
-  // ----- players -----
-  const MY_ID = Math.random().toString(36).slice(2, 8);
+  // ----- room / WebSocket -----
   const MY_HUE = 200;
   const ownTouches = new Map(); // pointerId -> { x, y }
-  const remotePlayers = new Map(); // remoteId -> { touches, hue, lastSeen }
+  const remotePlayers = new Map(); // playerId -> { touches, hue }
   const REMOTE_HUES = [18, 150, 280, 55, 320];
   let nextHue = 0;
+  let ws = null, wsRoom = null;
 
-  // BroadcastChannel: cross-tab collaboration with no server
-  let bc = null;
-  try {
-    bc = new BroadcastChannel('pond-theremin');
-    bc.onmessage = ({ data }) => {
-      if (!data || data.source !== 'theremin' || data.id === MY_ID) return;
-      if (!remotePlayers.has(data.id)){
-        remotePlayers.set(data.id, { hue: REMOTE_HUES[nextHue++ % REMOTE_HUES.length], touches: [] });
+  function connectAndJoin(roomCode){
+    setRoomState('joining');
+    if (ws){ ws.onclose = null; ws.close(); }
+
+    ws = new WebSocket(WS_URL);
+
+    ws.onopen = () => ws.send(JSON.stringify({ type: 'join', room: roomCode }));
+
+    ws.onmessage = ({ data }) => {
+      let msg; try { msg = JSON.parse(data); } catch(e){ return; }
+
+      if (msg.type === 'joined'){
+        wsRoom = msg.room;
+        setRoomState('joined', { room: msg.room, count: msg.playerCount });
       }
-      const p = remotePlayers.get(data.id);
-      // touches are sent as normalized [0,1] coordinates
-      p.touches = (data.touches || []).map(t => ({ x: t.x * W, y: t.y * H }));
-      p.lastSeen = Date.now();
+      if (msg.type === 'player_joined'){
+        if (!remotePlayers.has(msg.playerId)){
+          remotePlayers.set(msg.playerId, { touches: [], hue: REMOTE_HUES[nextHue++ % REMOTE_HUES.length] });
+        }
+        updatePlayersDisplay();
+      }
+      if (msg.type === 'move'){
+        const p = remotePlayers.get(msg.playerId);
+        if (p) p.touches = (msg.touches || []).map(t => ({ x: t.x * W, y: t.y * H }));
+      }
+      if (msg.type === 'player_left'){
+        remotePlayers.delete(msg.playerId);
+        updatePlayersDisplay();
+      }
+      if (msg.type === 'error'){
+        setRoomState('error', msg.msg === 'room_full' ? strings.roomFull : strings.connFailed);
+      }
+    };
+
+    ws.onclose = () => {
+      wsRoom = null; remotePlayers.clear();
+      setRoomState('idle');
       updatePlayersDisplay();
     };
-  } catch(e){}
 
-  setInterval(() => {
-    const now = Date.now();
-    for (const [id, p] of remotePlayers){
-      if (now - p.lastSeen > 3000) remotePlayers.delete(id);
-    }
-    updatePlayersDisplay();
-  }, 1000);
-
-  function broadcast(){
-    if (!bc || !W) return;
-    bc.postMessage({
-      source: 'theremin',
-      id: MY_ID,
-      touches: [...ownTouches.values()].map(t => ({ x: t.x / W, y: t.y / H }))
-    });
+    ws.onerror = () => setRoomState('error', strings.connFailed);
   }
 
-  let playersStringFn = n => n === 1 ? '1 player' : `${n} players`;
+  function leaveRoom(){
+    wsRoom = null; remotePlayers.clear();
+    if (ws){ ws.onclose = null; ws.close(); ws = null; }
+    setRoomState('idle');
+    updatePlayersDisplay();
+  }
+
+  function sendMove(){
+    if (!ws || ws.readyState !== WebSocket.OPEN || !wsRoom || !W) return;
+    ws.send(JSON.stringify({
+      type: 'move',
+      touches: [...ownTouches.values()].map(t => ({ x: t.x / W, y: t.y / H }))
+    }));
+  }
+
+  // ----- room UI -----
+  let strings = {
+    join: 'Join', leave: 'Leave',
+    roomPlaceholder: 'room code',
+    roomFull: 'Room is full', connFailed: 'Connection failed',
+    players: n => n === 1 ? '1 player' : `${n} players`,
+  };
+
+  function setRoomState(state, data){
+    const idleEl   = document.getElementById('room-idle');
+    const activeEl = document.getElementById('room-active');
+    const errorEl  = document.getElementById('room-error');
+    if (!idleEl) return;
+
+    idleEl.hidden = true; activeEl.hidden = true; errorEl.hidden = true;
+
+    if (state === 'idle'){
+      idleEl.hidden = false;
+      const inp = document.getElementById('room-input');
+      const btn = document.getElementById('room-join-btn');
+      if (inp){ inp.disabled = false; inp.value = ''; }
+      if (btn) btn.disabled = false;
+    }
+    if (state === 'joining'){
+      idleEl.hidden = false;
+      const inp = document.getElementById('room-input');
+      const btn = document.getElementById('room-join-btn');
+      if (inp) inp.disabled = true;
+      if (btn) btn.disabled = true;
+    }
+    if (state === 'joined'){
+      activeEl.hidden = false;
+      const codeEl = document.getElementById('room-code-display');
+      if (codeEl) codeEl.textContent = data.room;
+      updatePlayersDisplay();
+    }
+    if (state === 'error'){
+      errorEl.hidden = false;
+      errorEl.textContent = data;
+      setTimeout(() => setRoomState('idle'), 3000);
+    }
+  }
 
   function updatePlayersDisplay(){
-    const el = document.getElementById('theremin-players');
-    if (el) el.textContent = playersStringFn(1 + remotePlayers.size);
+    const count = 1 + remotePlayers.size;
+    const roomCountEl = document.getElementById('room-player-count');
+    const infoEl = document.getElementById('theremin-players');
+    if (roomCountEl) roomCountEl.textContent = `${count}/2`;
+    if (infoEl) infoEl.textContent = strings.players(count);
   }
 
-  function updateNoteDisplay(){
-    const noteEl = document.getElementById('theremin-note');
-    const freqEl = document.getElementById('theremin-freq');
-    if (!noteEl || !freqEl) return;
-    if (ownTouches.size > 0 && W > 0){
-      const first = ownTouches.values().next().value;
-      const freq = xToFreq(first.x);
-      noteEl.textContent = freqToNoteName(freq);
-      freqEl.textContent = Math.round(freq) + ' Hz';
-    } else {
-      noteEl.textContent = '—';
-      freqEl.textContent = '— Hz';
+  function handleJoin(){
+    const inp = document.getElementById('room-input');
+    if (!inp) return;
+    const code = inp.value.trim().toUpperCase();
+    if (code) connectAndJoin(code);
+  }
+
+  function bindRoomUI(){
+    document.getElementById('room-join-btn')?.addEventListener('click', handleJoin);
+    document.getElementById('room-leave-btn')?.addEventListener('click', leaveRoom);
+    const inp = document.getElementById('room-input');
+    if (inp){
+      inp.addEventListener('keydown', e => { if (e.key === 'Enter') handleJoin(); });
+      inp.addEventListener('input', e => { e.target.value = e.target.value.toUpperCase(); });
     }
   }
 
@@ -141,7 +213,7 @@
     ownTouches.set(e.pointerId, { x, y });
     startVoice(e.pointerId, xToFreq(x), yToGain(y));
     updateNoteDisplay();
-    broadcast();
+    sendMove();
     const hintEl = document.getElementById('theremin-hint');
     if (hintEl) hintEl.style.opacity = '0';
   });
@@ -152,21 +224,34 @@
     ownTouches.set(e.pointerId, { x, y });
     updateVoice(e.pointerId, xToFreq(x), yToGain(y));
     updateNoteDisplay();
-    broadcast();
+    sendMove();
   });
 
   function releasePointer(e){
     stopVoice(e.pointerId);
     ownTouches.delete(e.pointerId);
     updateNoteDisplay();
-    broadcast();
+    sendMove();
   }
   canvas.addEventListener('pointerup', releasePointer);
   canvas.addEventListener('pointercancel', releasePointer);
 
+  function updateNoteDisplay(){
+    const noteEl = document.getElementById('theremin-note');
+    const freqEl = document.getElementById('theremin-freq');
+    if (!noteEl || !freqEl) return;
+    if (ownTouches.size > 0 && W > 0){
+      const freq = xToFreq(ownTouches.values().next().value.x);
+      noteEl.textContent = freqToNoteName(freq);
+      freqEl.textContent = Math.round(freq) + ' Hz';
+    } else {
+      noteEl.textContent = '—';
+      freqEl.textContent = '— Hz';
+    }
+  }
+
   // ----- drawing -----
   function drawTouchPoint(x, y, hue){
-    // guide lines
     ctx.save();
     ctx.setLineDash([3, 6]);
     ctx.strokeStyle = `hsla(${hue},70%,65%,0.18)`;
@@ -176,32 +261,22 @@
     ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
     ctx.restore();
 
-    // glow rings
     [[44, 0.06], [24, 0.13], [11, 0.22]].forEach(([r, a]) => {
-      ctx.beginPath();
-      ctx.arc(x, y, r, 0, Math.PI * 2);
-      ctx.fillStyle = `hsla(${hue},80%,65%,${a})`;
-      ctx.fill();
+      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fillStyle = `hsla(${hue},80%,65%,${a})`; ctx.fill();
     });
 
-    // dot
-    ctx.beginPath();
-    ctx.arc(x, y, 8, 0, Math.PI * 2);
-    ctx.fillStyle = `hsla(${hue},80%,72%,0.95)`;
-    ctx.fill();
+    ctx.beginPath(); ctx.arc(x, y, 8, 0, Math.PI * 2);
+    ctx.fillStyle = `hsla(${hue},80%,72%,0.95)`; ctx.fill();
     ctx.strokeStyle = `hsla(${hue},80%,90%,0.7)`;
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
+    ctx.lineWidth = 1.5; ctx.stroke();
   }
 
   function drawRemotePoint(x, y, hue){
-    ctx.beginPath();
-    ctx.arc(x, y, 6, 0, Math.PI * 2);
-    ctx.fillStyle = `hsla(${hue},70%,65%,0.75)`;
-    ctx.fill();
+    ctx.beginPath(); ctx.arc(x, y, 6, 0, Math.PI * 2);
+    ctx.fillStyle = `hsla(${hue},70%,65%,0.75)`; ctx.fill();
     ctx.strokeStyle = `hsla(${hue},70%,88%,0.6)`;
-    ctx.lineWidth = 1.2;
-    ctx.stroke();
+    ctx.lineWidth = 1.2; ctx.stroke();
   }
 
   function draw(){
@@ -210,50 +285,55 @@
     ctx.fillStyle = '#101a2e';
     ctx.fillRect(0, 0, W, H);
 
-    // grid
     for (let i = 1; i < 8; i++){
       ctx.fillStyle = i % 4 === 0 ? 'rgba(255,255,255,0.055)' : 'rgba(255,255,255,0.022)';
       ctx.fillRect(Math.round((i / 8) * W), 0, 1, H);
       ctx.fillRect(0, Math.round((i / 8) * H), W, 1);
     }
 
-    // axis labels
     ctx.font = '11px ' + getComputedStyle(document.body).fontFamily;
     ctx.fillStyle = 'rgba(232,238,247,0.2)';
-    ctx.textBaseline = 'bottom'; ctx.textAlign = 'left';
-    ctx.fillText('C3', 10, H - 8);
-    ctx.textAlign = 'right';
-    ctx.fillText('C6', W - 10, H - 8);
-    ctx.textBaseline = 'top'; ctx.textAlign = 'right';
-    ctx.fillText('loud', W - 10, 10);
+    ctx.textBaseline = 'bottom'; ctx.textAlign = 'left';  ctx.fillText('C3', 10, H - 8);
+    ctx.textAlign = 'right'; ctx.fillText('C6', W - 10, H - 8);
+    ctx.textBaseline = 'top'; ctx.fillText('loud', W - 10, 10);
 
-    // remote players
     for (const [, p] of remotePlayers){
       for (const t of p.touches) drawRemotePoint(t.x, t.y, p.hue);
     }
-
-    // own touches
     for (const [, t] of ownTouches) drawTouchPoint(t.x, t.y, MY_HUE);
 
     requestAnimationFrame(draw);
   }
 
-  // ----- init (deferred until tab is shown) -----
+  // ----- init -----
   let initialized = false;
   function init(){
     if (initialized) return;
     initialized = true;
     resize();
     window.addEventListener('resize', resize);
+    bindRoomUI();
     draw();
   }
 
   document.addEventListener('theremin:show', init, { once: true });
+
   document.addEventListener('theremin:lang', e => {
-    playersStringFn = e.detail.thereminPlayers;
+    const T = e.detail;
+    strings = {
+      join: T.join, leave: T.leave,
+      roomPlaceholder: T.roomPlaceholder,
+      roomFull: T.roomFull, connFailed: T.connFailed,
+      players: T.thereminPlayers,
+    };
+    const joinLabel  = document.getElementById('room-join-label');
+    const leaveLabel = document.getElementById('room-leave-label');
+    const inp = document.getElementById('room-input');
+    if (joinLabel)  joinLabel.textContent  = strings.join;
+    if (leaveLabel) leaveLabel.textContent = strings.leave;
+    if (inp) inp.placeholder = strings.roomPlaceholder;
     updatePlayersDisplay();
   });
 
-  // init immediately if theremin tab is somehow already active on load
   if (document.getElementById('tab-theremin').classList.contains('active')) init();
 })();
