@@ -1,7 +1,10 @@
+const http = require('http');
 const { WebSocketServer } = require('ws');
 
 const PORT = process.env.PORT || 8080;
-const wss = new WebSocketServer({ port: PORT });
+const server = http.createServer((req, res) => { res.writeHead(200); res.end('ok'); });
+const wss = new WebSocketServer({ server });
+server.listen(PORT, () => console.log(`WebSocket server on port ${PORT}`));
 
 // rooms: Map<roomId, Map<playerId, ws>>
 const rooms = new Map();
@@ -67,4 +70,3 @@ wss.on('connection', ws => {
   });
 });
 
-console.log(`WebSocket server on port ${PORT}`);
