@@ -2,7 +2,7 @@
   "use strict";
 
   // Update this after Railway deploy — use wss:// for production
-  const WS_URL = 'wss://YOUR-APP.up.railway.app';
+  const WS_URL = 'wss://music-art-production.up.railway.app';
 
   const canvas = document.getElementById('theremin-canvas');
   if (!canvas) return;
