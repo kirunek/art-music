@@ -31,37 +31,50 @@
     return NOTE_NAMES[((midi % 12) + 12) % 12] + (Math.floor(midi / 12) - 1);
   }
 
-  // ----- audio -----
-  let audioReady = false, sharedReverb;
+  // ----- audio (raw Web Audio API — lazy init from first user gesture) -----
+  let audioCtx = null;
   const voices = new Map(); // pointerId -> { osc, vol }
 
-  async function ensureAudio(){
-    if (audioReady) return;
-    await Tone.start();
-    sharedReverb = new Tone.FeedbackDelay({ delayTime: 0.12, feedback: 0.28, wet: 0.18 }).toDestination();
-    audioReady = true;
+  function getAudioCtx(){
+    if (!audioCtx){
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    return audioCtx;
+  }
+
+  function unlockAudio(){
+    const ac = getAudioCtx();
+    if (ac.state === 'suspended') ac.resume();
   }
 
   function startVoice(id, freq, gain){
-    if (!audioReady || voices.has(id)) return;
-    const vol = new Tone.Volume(Tone.gainToDb(Math.max(gain, 0.001))).connect(sharedReverb);
-    const osc = new Tone.Oscillator({ type: 'triangle', frequency: freq }).connect(vol);
+    if (voices.has(id)) return;
+    const ac = getAudioCtx();
+    const osc = ac.createOscillator();
+    const vol = ac.createGain();
+    osc.type = 'triangle';
+    osc.frequency.value = freq;
+    vol.gain.value = gain * 0.7;
+    osc.connect(vol);
+    vol.connect(ac.destination);
     osc.start();
     voices.set(id, { osc, vol });
   }
 
   function updateVoice(id, freq, gain){
-    if (!audioReady || !voices.has(id)) return;
+    if (!voices.has(id)) return;
     const { osc, vol } = voices.get(id);
-    osc.frequency.rampTo(freq, 0.04);
-    vol.volume.rampTo(Tone.gainToDb(Math.max(gain, 0.001)), 0.04);
+    const now = getAudioCtx().currentTime;
+    osc.frequency.setTargetAtTime(freq, now, 0.03);
+    vol.gain.setTargetAtTime(gain * 0.7, now, 0.03);
   }
 
   function stopVoice(id){
     if (!voices.has(id)) return;
     const { osc, vol } = voices.get(id);
-    vol.volume.rampTo(-60, 0.15);
-    setTimeout(() => { try { osc.stop(); osc.dispose(); vol.dispose(); } catch(e){} }, 300);
+    const now = getAudioCtx().currentTime;
+    vol.gain.setTargetAtTime(0.0001, now, 0.1);
+    setTimeout(() => { try { osc.stop(); osc.disconnect(); vol.disconnect(); } catch(e){} }, 400);
     voices.delete(id);
   }
 
@@ -183,8 +196,7 @@
   }
 
   function handleJoin(){
-    // Unlock AudioContext synchronously from this user gesture (required on iOS Safari)
-    Tone.start().catch(() => {});
+    unlockAudio(); // create + resume AudioContext from this user gesture
     const inp = document.getElementById('room-input');
     if (!inp) return;
     const code = inp.value.trim().toUpperCase();
@@ -209,10 +221,9 @@
     };
   }
 
-  canvas.addEventListener('pointerdown', async e => {
+  canvas.addEventListener('pointerdown', e => {
     e.preventDefault();
-    try { Tone.context.rawContext.resume(); } catch(_){}
-    await ensureAudio();
+    unlockAudio();
     const { x, y } = getPos(e);
     canvas.setPointerCapture(e.pointerId);
     ownTouches.set(e.pointerId, { x, y });
