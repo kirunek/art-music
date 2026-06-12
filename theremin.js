@@ -44,6 +44,15 @@
 
   function unlockAudio(){
     const ac = getAudioCtx();
+    // Play a silent buffer — iOS Safari requires actual audio playback during
+    // the gesture to fully unlock the context, resume() alone is not enough
+    try {
+      const buf = ac.createBuffer(1, 1, ac.sampleRate);
+      const src = ac.createBufferSource();
+      src.buffer = buf;
+      src.connect(ac.destination);
+      src.start(0);
+    } catch(e) {}
     if (ac.state === 'suspended') ac.resume();
   }
 
@@ -227,12 +236,14 @@
     const { x, y } = getPos(e);
     canvas.setPointerCapture(e.pointerId);
     ownTouches.set(e.pointerId, { x, y });
-    startVoice(e.pointerId, xToFreq(x), yToGain(y));
     updateNoteDisplay();
     sendMove();
     const hintEl = document.getElementById('theremin-hint');
     if (hintEl) hintEl.style.opacity = '0';
-  });
+    const ac = getAudioCtx();
+    const doStart = () => startVoice(e.pointerId, xToFreq(x), yToGain(y));
+    if (ac.state === 'running') { doStart(); } else { ac.resume().then(doStart); }
+  }, { passive: false });
 
   canvas.addEventListener('pointermove', e => {
     if (!ownTouches.has(e.pointerId)) return;
