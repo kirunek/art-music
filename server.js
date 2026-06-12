@@ -51,7 +51,7 @@ wss.on('connection', ws => {
     }
 
     if (msg.type === 'move' && roomId){
-      broadcast(roomId, { type: 'move', playerId, touches: msg.touches || [] }, playerId);
+      broadcast(roomId, { type: 'move', playerId, sound: msg.sound, touches: msg.touches || [] }, playerId);
     }
   });
 
