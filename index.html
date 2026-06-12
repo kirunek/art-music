@@ -10,7 +10,7 @@
 <body>
 <div class="app">
   <div class="topbar">
-    <button class="lang-btn" id="langbtn">UA</button>
+    <button class="lang-btn" id="langbtn">EN</button>
   </div>
 
   <nav class="tab-bar" hidden>
@@ -55,8 +55,6 @@
     </div>
 
     <div class="theremin-info">
-      <span class="theremin-stat" id="theremin-note">—</span>
-      <span class="theremin-stat" id="theremin-freq">— Hz</span>
       <span class="theremin-stat" id="theremin-players">—</span>
       <span class="theremin-stat" id="room-code-info"></span>
     </div>
@@ -75,11 +73,11 @@
 
 <div class="modal-backdrop visible" id="room-modal-backdrop">
   <div class="modal">
-    <p class="modal-msg" id="room-modal-title">Enter a room code</p>
+    <p class="modal-msg" id="room-modal-title">Введіть код кімнати</p>
     <div class="room-modal-row">
       <input class="room-input" id="room-input" type="text" placeholder="room code"
              maxlength="12" autocomplete="off" autocapitalize="characters" spellcheck="false" />
-      <button class="pill" id="room-join-btn"><span id="room-join-label">Join</span></button>
+      <button class="pill" id="room-join-btn"><span id="room-join-label">Увійти</span></button>
     </div>
     <div id="room-error" class="room-error-msg" hidden></div>
   </div>

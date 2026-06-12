@@ -158,14 +158,48 @@
     }));
   }
 
-  // ----- room UI -----
-  let strings = {
-    join: 'Join', leave: 'Leave',
-    roomPlaceholder: 'room code',
-    roomFull: 'Room is full', connFailed: 'Connection failed',
-    players: n => n === 1 ? '1 player' : `${n} players`,
-    loud: 'loud', silent: 'silent', high: 'high', low: 'low',
+  // ----- i18n -----
+  const LANGS = {
+    en: {
+      join: 'Join',
+      roomPlaceholder: 'room code',
+      roomFull: 'Room is full', connFailed: 'Connection failed',
+      players: n => `In the room: ${n}`,
+      roomPrefix: 'Room #',
+      modalTitle: 'Enter a room code',
+      loud: 'loud', silent: 'silent', high: 'high', low: 'low',
+      langSwitch: 'UA',
+    },
+    ua: {
+      join: 'Увійти',
+      roomPlaceholder: 'код кімнати',
+      roomFull: 'Кімната заповнена', connFailed: 'Помилка з\'єднання',
+      players: n => `У кімнаті: ${n}`,
+      roomPrefix: 'Кімната #',
+      modalTitle: 'Введіть код кімнати',
+      loud: 'гучно', silent: 'тихо', high: 'високо', low: 'низько',
+      langSwitch: 'EN',
+    },
   };
+
+  let currentLang = 'ua';
+  let strings = LANGS.ua;
+
+  function applyStrings(){
+    const langBtn   = document.getElementById('langbtn');
+    const joinLabel = document.getElementById('room-join-label');
+    const inp       = document.getElementById('room-input');
+    const modalTitle = document.getElementById('room-modal-title');
+    const codeInfo  = document.getElementById('room-code-info');
+    if (langBtn)    langBtn.textContent    = strings.langSwitch;
+    if (joinLabel)  joinLabel.textContent  = strings.join;
+    if (inp)        inp.placeholder        = strings.roomPlaceholder;
+    if (modalTitle) modalTitle.textContent = strings.modalTitle;
+    if (codeInfo && wsRoom) codeInfo.textContent = strings.roomPrefix + wsRoom;
+    updatePlayersDisplay();
+  }
+
+  // ----- room UI -----
 
   function setRoomState(state, data){
     const backdrop = document.getElementById('room-modal-backdrop');
@@ -188,7 +222,7 @@
     }
     if (state === 'joined'){
       backdrop.classList.remove('visible');
-      if (codeInfo) codeInfo.textContent = data.room;
+      if (codeInfo) codeInfo.textContent = strings.roomPrefix + data.room;
       updatePlayersDisplay();
     }
     if (state === 'error'){
@@ -202,6 +236,8 @@
   function updatePlayersDisplay(){
     const infoEl = document.getElementById('theremin-players');
     if (infoEl) infoEl.textContent = strings.players(1 + remotePlayers.size);
+    const codeInfo = document.getElementById('room-code-info');
+    if (codeInfo && wsRoom) codeInfo.textContent = strings.roomPrefix + wsRoom;
   }
 
   function handleJoin(){
@@ -218,6 +254,14 @@
     if (inp){
       inp.addEventListener('keydown', e => { if (e.key === 'Enter') handleJoin(); });
       inp.addEventListener('input', e => { e.target.value = e.target.value.toUpperCase(); });
+    }
+    const langBtn = document.getElementById('langbtn');
+    if (langBtn){
+      langBtn.addEventListener('click', () => {
+        currentLang = currentLang === 'en' ? 'ua' : 'en';
+        strings = LANGS[currentLang];
+        applyStrings();
+      });
     }
   }
 
@@ -345,26 +389,11 @@
     resize();
     window.addEventListener('resize', resize);
     bindRoomUI();
+    applyStrings();
     draw();
   }
 
   document.addEventListener('theremin:show', init, { once: true });
-
-  document.addEventListener('theremin:lang', e => {
-    const T = e.detail;
-    strings = {
-      join: T.join, leave: T.leave,
-      roomPlaceholder: T.roomPlaceholder,
-      roomFull: T.roomFull, connFailed: T.connFailed,
-      players: T.thereminPlayers,
-      loud: T.loud, silent: T.silent, high: T.high, low: T.low,
-    };
-    const joinLabel = document.getElementById('room-join-label');
-    const inp       = document.getElementById('room-input');
-    if (joinLabel) joinLabel.textContent = strings.join;
-    if (inp) inp.placeholder = strings.roomPlaceholder;
-    updatePlayersDisplay();
-  });
 
   if (document.getElementById('tab-theremin').classList.contains('active')) init();
 })();

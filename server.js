@@ -8,8 +8,6 @@ server.listen(PORT, () => console.log(`WebSocket server on port ${PORT}`));
 
 // rooms: Map<roomId, Map<playerId, ws>>
 const rooms = new Map();
-const MAX_PLAYERS = 2;
-
 function uid(){ return Math.random().toString(36).slice(2, 8); }
 
 function send(ws, msg){ if (ws.readyState === 1) ws.send(JSON.stringify(msg)); }
@@ -43,12 +41,6 @@ wss.on('connection', ws => {
 
       if (!rooms.has(room)) rooms.set(room, new Map());
       const players = rooms.get(room);
-
-      if (players.size >= MAX_PLAYERS){
-        send(ws, { type: 'error', msg: 'room_full' });
-        roomId = null;
-        return;
-      }
 
       players.set(playerId, ws);
       roomId = room;
