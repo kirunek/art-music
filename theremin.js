@@ -37,8 +37,15 @@
 
   async function ensureAudio(){
     if (audioReady) return;
-    await Tone.start();
-    sharedReverb = new Tone.Reverb({ decay: 2, wet: 0.22 }).toDestination();
+    try {
+      await Tone.start();
+      const rev = new Tone.Reverb({ decay: 2, wet: 0.22 }).toDestination();
+      await rev.ready;
+      sharedReverb = rev;
+    } catch(e){
+      // reverb failed (common on some mobile browsers) — connect directly
+      sharedReverb = Tone.getDestination();
+    }
     audioReady = true;
   }
 
@@ -183,6 +190,8 @@
   }
 
   function handleJoin(){
+    // Unlock AudioContext synchronously from this user gesture (required on iOS Safari)
+    Tone.start().catch(() => {});
     const inp = document.getElementById('room-input');
     if (!inp) return;
     const code = inp.value.trim().toUpperCase();
@@ -209,6 +218,7 @@
 
   canvas.addEventListener('pointerdown', async e => {
     e.preventDefault();
+    try { Tone.context.rawContext.resume(); } catch(_){}
     await ensureAudio();
     const { x, y } = getPos(e);
     canvas.setPointerCapture(e.pointerId);
