@@ -367,3 +367,26 @@ button.pill.danger:hover{ background: rgba(255,90,90,0.15); }
 }
 .modal-actions{ display: flex; gap: 12px; }
 .room-modal-row{ display: flex; gap: 10px; align-items: center; }
+
+.toast{
+  position: fixed;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%) translateY(12px);
+  background: #16223b;
+  border: 1px solid var(--control-border);
+  border-radius: 20px;
+  padding: 10px 20px;
+  font-size: 13px;
+  color: var(--ink-soft);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  z-index: 200;
+  white-space: nowrap;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+}
+.toast.visible{
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}

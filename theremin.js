@@ -120,6 +120,7 @@
           remotePlayers.set(msg.playerId, { touches: [], hue: REMOTE_HUES[nextHue++ % REMOTE_HUES.length] });
         }
         updatePlayersDisplay();
+        showToast(strings.playerJoined);
       }
       if (msg.type === 'move'){
         const p = remotePlayers.get(msg.playerId);
@@ -167,6 +168,7 @@
       players: n => `In the room: ${n}`,
       roomPrefix: 'Room #',
       modalTitle: 'Enter a room code',
+      playerJoined: 'A new player joined',
       loud: 'loud', silent: 'silent', high: 'high', low: 'low',
       langSwitch: 'UA',
     },
@@ -177,6 +179,7 @@
       players: n => `У кімнаті: ${n}`,
       roomPrefix: 'Кімната #',
       modalTitle: 'Введіть код кімнати',
+      playerJoined: 'Новий гравець приєднався',
       loud: 'гучно', silent: 'тихо', high: 'високо', low: 'низько',
       langSwitch: 'EN',
     },
@@ -238,6 +241,21 @@
     if (infoEl) infoEl.textContent = strings.players(1 + remotePlayers.size);
     const codeInfo = document.getElementById('room-code-info');
     if (codeInfo && wsRoom) codeInfo.textContent = strings.roomPrefix + wsRoom;
+  }
+
+  let toastTimer = null;
+  function showToast(msg){
+    let el = document.getElementById('toast');
+    if (!el){
+      el = document.createElement('div');
+      el.id = 'toast';
+      el.className = 'toast';
+      document.body.appendChild(el);
+    }
+    el.textContent = msg;
+    el.classList.add('visible');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('visible'), 3000);
   }
 
   function handleJoin(){
