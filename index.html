@@ -9,16 +9,15 @@
 <body>
 <div class="app">
   <div class="topbar">
-    <h1 class="title">pond</h1>
     <button class="lang-btn" id="langbtn">UA</button>
   </div>
 
-  <nav class="tab-bar">
-    <button class="tab active" data-tab="pond" id="tab-btn-pond">pond</button>
-    <button class="tab" data-tab="theremin" id="tab-btn-theremin">theremin</button>
+  <nav class="tab-bar" hidden>
+    <button class="tab" data-tab="pond" id="tab-btn-pond">pond</button>
+    <button class="tab active" data-tab="theremin" id="tab-btn-theremin">theremin</button>
   </nav>
 
-  <div class="tab-section active" id="tab-pond">
+  <div class="tab-section" id="tab-pond">
     <div class="stage">
       <canvas id="pond"></canvas>
       <div id="picker-overlay"></div>
@@ -49,7 +48,7 @@
     <div class="legend" id="legend"></div>
   </div>
 
-  <div class="tab-section" id="tab-theremin">
+  <div class="tab-section active" id="tab-theremin">
     <div class="stage" id="theremin-stage">
       <canvas id="theremin-canvas"></canvas>
       <div class="hint" id="theremin-hint">hold anywhere · left–right: pitch · up–down: volume</div>

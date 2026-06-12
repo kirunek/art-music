@@ -41,13 +41,11 @@ html, body{
   max-width: 600px;
   display: flex;
   align-items: center;
-  justify-content: center;
-  position: relative;
+  justify-content: flex-end;
+  min-height: 28px;
 }
 
 button.lang-btn{
-  position: absolute;
-  right: 0;
   height: 28px;
   padding: 0 10px;
   border-radius: 14px;
