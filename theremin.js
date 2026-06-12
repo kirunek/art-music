@@ -99,10 +99,62 @@
   // ----- room / WebSocket -----
   const MY_HUE = 200;
   const ownTouches = new Map(); // pointerId -> { x, y }
-  const remotePlayers = new Map(); // playerId -> { touches, hue }
+  const remotePlayers = new Map(); // playerId -> { touches, hue, voices[] }
   const REMOTE_HUES = [18, 150, 280, 55, 320];
   let nextHue = 0;
   let ws = null, wsRoom = null;
+
+  // ----- remote audio -----
+  function stopAllRemoteVoices(player){
+    player.voices.forEach(v => {
+      if (!v) return;
+      const now = getAudioCtx().currentTime;
+      v.vol.gain.setTargetAtTime(0.0001, now, 0.1);
+      setTimeout(() => { try { v.osc.stop(); v.osc.disconnect(); v.vol.disconnect(); } catch(e){} }, 400);
+    });
+    player.voices = [];
+  }
+
+  function reconcileRemoteVoices(player, rawTouches, soundType){
+    const ac = audioCtx;
+    if (!ac || ac.state !== 'running') {
+      player.touches = rawTouches.map(t => ({ x: t.x * W, y: t.y * H }));
+      return;
+    }
+    const now = ac.currentTime;
+    const oscType = SOUND_PRESETS.find(p => p.id === soundType)?.type ?? 'triangle';
+
+    rawTouches.forEach((t, i) => {
+      const freq = yToFreq(t.y * H);
+      const gain = xToGain(t.x * W) * 0.55; // slightly softer than own voice
+      if (player.voices[i]) {
+        player.voices[i].osc.frequency.setTargetAtTime(freq, now, 0.03);
+        player.voices[i].vol.gain.setTargetAtTime(gain, now, 0.03);
+        player.voices[i].osc.type = oscType;
+      } else {
+        const osc = ac.createOscillator();
+        const vol = ac.createGain();
+        osc.type = oscType;
+        osc.frequency.value = freq;
+        vol.gain.setValueAtTime(0, now);
+        vol.gain.linearRampToValueAtTime(gain, now + 0.02);
+        osc.connect(vol);
+        vol.connect(ac.destination);
+        osc.start();
+        player.voices[i] = { osc, vol };
+      }
+    });
+
+    // stop voices for touches that ended
+    for (let i = rawTouches.length; i < player.voices.length; i++){
+      const v = player.voices[i];
+      if (!v) continue;
+      v.vol.gain.setTargetAtTime(0.0001, now, 0.1);
+      setTimeout(() => { try { v.osc.stop(); v.osc.disconnect(); v.vol.disconnect(); } catch(e){} }, 400);
+    }
+    player.voices.length = rawTouches.length;
+    player.touches = rawTouches.map(t => ({ x: t.x * W, y: t.y * H }));
+  }
 
   function connectAndJoin(roomCode){
     setRoomState('joining');
@@ -119,14 +171,14 @@
         wsRoom = msg.room;
         (msg.existingPlayers || []).forEach(id => {
           if (!remotePlayers.has(id)){
-            remotePlayers.set(id, { touches: [], hue: REMOTE_HUES[nextHue++ % REMOTE_HUES.length] });
+            remotePlayers.set(id, { touches: [], hue: REMOTE_HUES[nextHue++ % REMOTE_HUES.length], voices: [] });
           }
         });
         setRoomState('joined', { room: msg.room, count: msg.playerCount });
       }
       if (msg.type === 'player_joined'){
         if (!remotePlayers.has(msg.playerId)){
-          remotePlayers.set(msg.playerId, { touches: [], hue: REMOTE_HUES[nextHue++ % REMOTE_HUES.length] });
+          remotePlayers.set(msg.playerId, { touches: [], hue: REMOTE_HUES[nextHue++ % REMOTE_HUES.length], voices: [] });
         }
         updatePlayersDisplay();
         showToast(strings.playerJoined);
@@ -134,9 +186,11 @@
       }
       if (msg.type === 'move'){
         const p = remotePlayers.get(msg.playerId);
-        if (p) p.touches = (msg.touches || []).map(t => ({ x: t.x * W, y: t.y * H }));
+        if (p) reconcileRemoteVoices(p, msg.touches || [], msg.sound);
       }
       if (msg.type === 'player_left'){
+        const p = remotePlayers.get(msg.playerId);
+        if (p) stopAllRemoteVoices(p);
         remotePlayers.delete(msg.playerId);
         updatePlayersDisplay();
       }
@@ -146,7 +200,9 @@
     };
 
     ws.onclose = () => {
-      wsRoom = null; remotePlayers.clear();
+      wsRoom = null;
+      for (const p of remotePlayers.values()) stopAllRemoteVoices(p);
+      remotePlayers.clear();
       setRoomState('idle');
       updatePlayersDisplay();
     };
@@ -155,7 +211,9 @@
   }
 
   function leaveRoom(){
-    wsRoom = null; remotePlayers.clear();
+    wsRoom = null;
+    for (const p of remotePlayers.values()) stopAllRemoteVoices(p);
+    remotePlayers.clear();
     if (ws){ ws.onclose = null; ws.close(); ws = null; }
     updatePlayersDisplay();
     setRoomState('idle');
@@ -165,6 +223,7 @@
     if (!ws || ws.readyState !== WebSocket.OPEN || !wsRoom || !W) return;
     ws.send(JSON.stringify({
       type: 'move',
+      sound: currentSound,
       touches: [...ownTouches.values()].map(t => ({ x: t.x / W, y: t.y / H }))
     }));
   }
