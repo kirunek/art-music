@@ -86,6 +86,11 @@
 
       if (msg.type === 'joined'){
         wsRoom = msg.room;
+        (msg.existingPlayers || []).forEach(id => {
+          if (!remotePlayers.has(id)){
+            remotePlayers.set(id, { touches: [], hue: REMOTE_HUES[nextHue++ % REMOTE_HUES.length] });
+          }
+        });
         setRoomState('joined', { room: msg.room, count: msg.playerCount });
       }
       if (msg.type === 'player_joined'){

@@ -53,7 +53,8 @@ wss.on('connection', ws => {
       players.set(playerId, ws);
       roomId = room;
 
-      send(ws, { type: 'joined', playerId, room, playerCount: players.size });
+      const existingPlayers = [...players.keys()].filter(id => id !== playerId);
+      send(ws, { type: 'joined', playerId, room, playerCount: players.size, existingPlayers });
       broadcast(room, { type: 'player_joined', playerId }, playerId);
     }
 
