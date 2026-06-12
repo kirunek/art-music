@@ -37,15 +37,8 @@
 
   async function ensureAudio(){
     if (audioReady) return;
-    try {
-      await Tone.start();
-      const rev = new Tone.Reverb({ decay: 2, wet: 0.22 }).toDestination();
-      await rev.ready;
-      sharedReverb = rev;
-    } catch(e){
-      // reverb failed (common on some mobile browsers) — connect directly
-      sharedReverb = Tone.getDestination();
-    }
+    await Tone.start();
+    sharedReverb = new Tone.FeedbackDelay({ delayTime: 0.12, feedback: 0.28, wet: 0.18 }).toDestination();
     audioReady = true;
   }
 
