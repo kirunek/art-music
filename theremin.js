@@ -121,6 +121,7 @@
         }
         updatePlayersDisplay();
         showToast(strings.playerJoined);
+        playCrystal();
       }
       if (msg.type === 'move'){
         const p = remotePlayers.get(msg.playerId);
@@ -241,6 +242,25 @@
     if (infoEl) infoEl.textContent = strings.players(1 + remotePlayers.size);
     const codeInfo = document.getElementById('room-code-info');
     if (codeInfo && wsRoom) codeInfo.textContent = strings.roomPrefix + wsRoom;
+  }
+
+  function playCrystal(){
+    const ac = getAudioCtx();
+    if (!ac || ac.state !== 'running') return;
+    const now = ac.currentTime;
+    [[1046.5, 0.10], [1568.0, 0.055]].forEach(([freq, peak]) => {
+      const osc = ac.createOscillator();
+      const vol = ac.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      vol.gain.setValueAtTime(0, now);
+      vol.gain.linearRampToValueAtTime(peak, now + 0.008);
+      vol.gain.exponentialRampToValueAtTime(0.0001, now + 1.2);
+      osc.connect(vol);
+      vol.connect(ac.destination);
+      osc.start(now);
+      osc.stop(now + 1.2);
+    });
   }
 
   let toastTimer = null;
