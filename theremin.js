@@ -24,8 +24,8 @@
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 
-  function xToFreq(x){ return FREQ_MIN * Math.pow(FREQ_MAX / FREQ_MIN, x / W); }
-  function yToGain(y){ return Math.max(0, Math.min(1, 1 - y / H)); }
+  function xToGain(x){ return Math.max(0, Math.min(1, x / W)); }
+  function yToFreq(y){ return FREQ_MIN * Math.pow(FREQ_MAX / FREQ_MIN, 1 - y / H); }
   function freqToNoteName(freq){
     const midi = Math.round(12 * Math.log2(freq / 440) + 69);
     return NOTE_NAMES[((midi % 12) + 12) % 12] + (Math.floor(midi / 12) - 1);
@@ -241,7 +241,7 @@
     const hintEl = document.getElementById('theremin-hint');
     if (hintEl) hintEl.style.opacity = '0';
     const ac = getAudioCtx();
-    const doStart = () => startVoice(e.pointerId, xToFreq(x), yToGain(y));
+    const doStart = () => startVoice(e.pointerId, yToFreq(y), xToGain(x));
     if (ac.state === 'running') { doStart(); } else { ac.resume().then(doStart); }
   }, { passive: false });
 
@@ -249,7 +249,7 @@
     if (!ownTouches.has(e.pointerId)) return;
     const { x, y } = getPos(e);
     ownTouches.set(e.pointerId, { x, y });
-    updateVoice(e.pointerId, xToFreq(x), yToGain(y));
+    updateVoice(e.pointerId, yToFreq(y), xToGain(x));
     updateNoteDisplay();
     sendMove();
   });
@@ -268,7 +268,7 @@
     const freqEl = document.getElementById('theremin-freq');
     if (!noteEl || !freqEl) return;
     if (ownTouches.size > 0 && W > 0){
-      const freq = xToFreq(ownTouches.values().next().value.x);
+      const freq = yToFreq(ownTouches.values().next().value.y);
       noteEl.textContent = freqToNoteName(freq);
       freqEl.textContent = Math.round(freq) + ' Hz';
     } else {
@@ -320,14 +320,14 @@
 
     ctx.font = '11px ' + getComputedStyle(document.body).fontFamily;
     ctx.fillStyle = 'rgba(232,238,247,0.2)';
-    // Y axis: loud/silent at top/bottom, horizontally centered
+    // Y axis: high/low at top/bottom, horizontally centered
     ctx.textAlign = 'center';
-    ctx.textBaseline = 'top';    ctx.fillText(strings.loud,   W / 2, 10);
-    ctx.textBaseline = 'bottom'; ctx.fillText(strings.silent, W / 2, H - 10);
-    // X axis: low/high at left/right, vertically centered
+    ctx.textBaseline = 'top';    ctx.fillText(strings.high,   W / 2, 10);
+    ctx.textBaseline = 'bottom'; ctx.fillText(strings.low,    W / 2, H - 10);
+    // X axis: silent/loud at left/right, vertically centered
     ctx.textBaseline = 'middle';
-    ctx.textAlign = 'left';  ctx.fillText(strings.low,  10,      H / 2);
-    ctx.textAlign = 'right'; ctx.fillText(strings.high, W - 10,  H / 2);
+    ctx.textAlign = 'left';  ctx.fillText(strings.silent, 10,      H / 2);
+    ctx.textAlign = 'right'; ctx.fillText(strings.loud,   W - 10,  H / 2);
 
     for (const [, p] of remotePlayers){
       for (const t of p.touches) drawRemotePoint(t.x, t.y, p.hue);
