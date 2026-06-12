@@ -366,3 +366,4 @@ button.pill.danger:hover{ background: rgba(255,90,90,0.15); }
   text-align: center;
 }
 .modal-actions{ display: flex; gap: 12px; }
+.room-modal-row{ display: flex; gap: 10px; align-items: center; }

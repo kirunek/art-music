@@ -119,8 +119,8 @@
   function leaveRoom(){
     wsRoom = null; remotePlayers.clear();
     if (ws){ ws.onclose = null; ws.close(); ws = null; }
-    setRoomState('idle');
     updatePlayersDisplay();
+    setRoomState('idle');
   }
 
   function sendMove(){
@@ -137,49 +137,44 @@
     roomPlaceholder: 'room code',
     roomFull: 'Room is full', connFailed: 'Connection failed',
     players: n => n === 1 ? '1 player' : `${n} players`,
+    loud: 'loud', silent: 'silent', high: 'high', low: 'low',
   };
 
   function setRoomState(state, data){
-    const idleEl   = document.getElementById('room-idle');
-    const activeEl = document.getElementById('room-active');
+    const backdrop = document.getElementById('room-modal-backdrop');
     const errorEl  = document.getElementById('room-error');
-    if (!idleEl) return;
-
-    idleEl.hidden = true; activeEl.hidden = true; errorEl.hidden = true;
+    const inp      = document.getElementById('room-input');
+    const btn      = document.getElementById('room-join-btn');
+    const codeInfo = document.getElementById('room-code-info');
+    if (!backdrop) return;
 
     if (state === 'idle'){
-      idleEl.hidden = false;
-      const inp = document.getElementById('room-input');
-      const btn = document.getElementById('room-join-btn');
-      if (inp){ inp.disabled = false; inp.value = ''; }
+      backdrop.classList.add('visible');
+      if (errorEl) errorEl.hidden = true;
+      if (inp){ inp.disabled = false; inp.value = ''; inp.focus(); }
       if (btn) btn.disabled = false;
+      if (codeInfo) codeInfo.textContent = '';
     }
     if (state === 'joining'){
-      idleEl.hidden = false;
-      const inp = document.getElementById('room-input');
-      const btn = document.getElementById('room-join-btn');
       if (inp) inp.disabled = true;
       if (btn) btn.disabled = true;
     }
     if (state === 'joined'){
-      activeEl.hidden = false;
-      const codeEl = document.getElementById('room-code-display');
-      if (codeEl) codeEl.textContent = data.room;
+      backdrop.classList.remove('visible');
+      if (codeInfo) codeInfo.textContent = data.room;
       updatePlayersDisplay();
     }
     if (state === 'error'){
-      errorEl.hidden = false;
-      errorEl.textContent = data;
-      setTimeout(() => setRoomState('idle'), 3000);
+      if (errorEl){ errorEl.hidden = false; errorEl.textContent = data; }
+      if (inp) inp.disabled = false;
+      if (btn) btn.disabled = false;
+      setTimeout(() => { if (errorEl) errorEl.hidden = true; }, 3000);
     }
   }
 
   function updatePlayersDisplay(){
-    const count = 1 + remotePlayers.size;
-    const roomCountEl = document.getElementById('room-player-count');
     const infoEl = document.getElementById('theremin-players');
-    if (roomCountEl) roomCountEl.textContent = `${count}/2`;
-    if (infoEl) infoEl.textContent = strings.players(count);
+    if (infoEl) infoEl.textContent = strings.players(1 + remotePlayers.size);
   }
 
   function handleJoin(){
@@ -191,7 +186,6 @@
 
   function bindRoomUI(){
     document.getElementById('room-join-btn')?.addEventListener('click', handleJoin);
-    document.getElementById('room-leave-btn')?.addEventListener('click', leaveRoom);
     const inp = document.getElementById('room-input');
     if (inp){
       inp.addEventListener('keydown', e => { if (e.key === 'Enter') handleJoin(); });
@@ -202,7 +196,10 @@
   // ----- pointer handling -----
   function getPos(e){
     const r = canvas.getBoundingClientRect();
-    return { x: e.clientX - r.left, y: e.clientY - r.top };
+    return {
+      x: Math.max(0, Math.min(W, e.clientX - r.left)),
+      y: Math.max(0, Math.min(H, e.clientY - r.top)),
+    };
   }
 
   canvas.addEventListener('pointerdown', async e => {
@@ -293,9 +290,14 @@
 
     ctx.font = '11px ' + getComputedStyle(document.body).fontFamily;
     ctx.fillStyle = 'rgba(232,238,247,0.2)';
-    ctx.textBaseline = 'bottom'; ctx.textAlign = 'left';  ctx.fillText('C3', 10, H - 8);
-    ctx.textAlign = 'right'; ctx.fillText('C6', W - 10, H - 8);
-    ctx.textBaseline = 'top'; ctx.fillText('loud', W - 10, 10);
+    // Y axis: loud/silent at top/bottom, horizontally centered
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';    ctx.fillText(strings.loud,   W / 2, 10);
+    ctx.textBaseline = 'bottom'; ctx.fillText(strings.silent, W / 2, H - 10);
+    // X axis: low/high at left/right, vertically centered
+    ctx.textBaseline = 'middle';
+    ctx.textAlign = 'left';  ctx.fillText(strings.low,  10,      H / 2);
+    ctx.textAlign = 'right'; ctx.fillText(strings.high, W - 10,  H / 2);
 
     for (const [, p] of remotePlayers){
       for (const t of p.touches) drawRemotePoint(t.x, t.y, p.hue);
@@ -325,12 +327,11 @@
       roomPlaceholder: T.roomPlaceholder,
       roomFull: T.roomFull, connFailed: T.connFailed,
       players: T.thereminPlayers,
+      loud: T.loud, silent: T.silent, high: T.high, low: T.low,
     };
-    const joinLabel  = document.getElementById('room-join-label');
-    const leaveLabel = document.getElementById('room-leave-label');
-    const inp = document.getElementById('room-input');
-    if (joinLabel)  joinLabel.textContent  = strings.join;
-    if (leaveLabel) leaveLabel.textContent = strings.leave;
+    const joinLabel = document.getElementById('room-join-label');
+    const inp       = document.getElementById('room-input');
+    if (joinLabel) joinLabel.textContent = strings.join;
     if (inp) inp.placeholder = strings.roomPlaceholder;
     updatePlayersDisplay();
   });

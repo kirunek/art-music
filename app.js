@@ -51,6 +51,7 @@
       join: 'Join', leave: 'Leave',
       roomPlaceholder: 'room code',
       roomFull: 'Room is full', connFailed: 'Connection failed',
+      loud: 'loud', silent: 'silent', high: 'high', low: 'low',
     },
     ua: {
       hint: 'торкніться будь-де — оберіть категорію, а потім звук',
@@ -66,6 +67,7 @@
       join: 'Приєднатись', leave: 'Вийти',
       roomPlaceholder: 'код кімнати',
       roomFull: 'Кімната заповнена', connFailed: 'Помилка підключення',
+      loud: 'гучно', silent: 'тихо', high: 'високо', low: 'низько',
     }
   };
   let lang = 'en';
