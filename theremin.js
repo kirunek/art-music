@@ -31,6 +31,15 @@
     return NOTE_NAMES[((midi % 12) + 12) % 12] + (Math.floor(midi / 12) - 1);
   }
 
+  // ----- sound presets -----
+  const SOUND_PRESETS = [
+    { id: 'sine',     type: 'sine',     en: 'Flute',   ua: 'Флейта' },
+    { id: 'triangle', type: 'triangle', en: 'Crystal', ua: 'Кришталь' },
+    { id: 'sawtooth', type: 'sawtooth', en: 'Strings', ua: 'Струни' },
+    { id: 'square',   type: 'square',   en: 'Organ',   ua: 'Орган' },
+  ];
+  let currentSound = 'triangle';
+
   // ----- audio (raw Web Audio API — lazy init from first user gesture) -----
   let audioCtx = null;
   const voices = new Map(); // pointerId -> { osc, vol }
@@ -61,7 +70,7 @@
     const ac = getAudioCtx();
     const osc = ac.createOscillator();
     const vol = ac.createGain();
-    osc.type = 'triangle';
+    osc.type = SOUND_PRESETS.find(p => p.id === currentSound)?.type ?? 'triangle';
     osc.frequency.value = freq;
     vol.gain.value = gain * 0.7;
     osc.connect(vol);
@@ -201,6 +210,7 @@
     if (modalTitle) modalTitle.textContent = strings.modalTitle;
     if (codeInfo && wsRoom) codeInfo.textContent = strings.roomPrefix + wsRoom;
     updatePlayersDisplay();
+    buildSoundSelector();
   }
 
   // ----- room UI -----
@@ -284,6 +294,25 @@
     if (!inp) return;
     const code = inp.value.trim().toUpperCase();
     if (code) connectAndJoin(code);
+  }
+
+  function buildSoundSelector(){
+    const container = document.getElementById('sound-selector');
+    if (!container) return;
+    container.innerHTML = '';
+    SOUND_PRESETS.forEach(preset => {
+      const btn = document.createElement('button');
+      btn.className = 'sound-btn' + (preset.id === currentSound ? ' active' : '');
+      btn.dataset.sound = preset.id;
+      btn.textContent = preset[currentLang];
+      btn.addEventListener('click', () => {
+        currentSound = preset.id;
+        container.querySelectorAll('.sound-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        for (const { osc } of voices.values()) osc.type = preset.type;
+      });
+      container.appendChild(btn);
+    });
   }
 
   function bindRoomUI(){
