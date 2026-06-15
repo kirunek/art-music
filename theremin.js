@@ -238,6 +238,7 @@
       roomPrefix: 'Room #',
       modalTitle: 'Enter a room code',
       playerJoined: 'A new player joined',
+      playAlone: 'or play alone',
       loud: 'loud', silent: 'silent', high: 'high', low: 'low',
       langSwitch: 'UA',
     },
@@ -249,6 +250,7 @@
       roomPrefix: 'Кімната #',
       modalTitle: 'Введіть код кімнати',
       playerJoined: 'Новий гравець приєднався',
+      playAlone: 'або грати самому',
       loud: 'гучно', silent: 'тихо', high: 'високо', low: 'низько',
       langSwitch: 'EN',
     },
@@ -268,6 +270,8 @@
     if (inp)        inp.placeholder        = strings.roomPlaceholder;
     if (modalTitle) modalTitle.textContent = strings.modalTitle;
     if (codeInfo && wsRoom) codeInfo.textContent = strings.roomPrefix + wsRoom;
+    const soloBtn = document.getElementById('solo-btn');
+    if (soloBtn) soloBtn.textContent = strings.playAlone;
     updatePlayersDisplay();
     buildSoundSelector();
   }
@@ -308,9 +312,9 @@
 
   function updatePlayersDisplay(){
     const infoEl = document.getElementById('theremin-players');
-    if (infoEl) infoEl.textContent = strings.players(1 + remotePlayers.size);
+    if (infoEl) infoEl.textContent = wsRoom ? strings.players(1 + remotePlayers.size) : '';
     const codeInfo = document.getElementById('room-code-info');
-    if (codeInfo && wsRoom) codeInfo.textContent = strings.roomPrefix + wsRoom;
+    if (codeInfo) codeInfo.textContent = wsRoom ? strings.roomPrefix + wsRoom : '';
   }
 
   function playCrystal(){
@@ -389,6 +393,11 @@
         applyStrings();
       });
     }
+    document.getElementById('solo-btn')?.addEventListener('click', () => {
+      unlockAudio();
+      document.getElementById('room-modal-backdrop')?.classList.remove('visible');
+      updatePlayersDisplay();
+    });
   }
 
   // ----- pointer handling -----
