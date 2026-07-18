@@ -38,7 +38,7 @@
     { id: 'square',   type: 'square',   en: 'Organ',   ua: 'Орган' },
   ];
   let currentSound = 'triangle';
-  let userName = localStorage.getItem('pond_name') || '';
+  let userName = '';
 
   // ----- audio -----
   let audioCtx = null;
@@ -194,7 +194,8 @@
     const blob = new Blob(mp3Chunks, { type: 'audio/mp3' });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
-    a.href = url; a.download = 'theremin-' + Date.now() + '.mp3';
+    const namePart = userName ? userName.toLowerCase().replace(/\s+/g, '-') + '-' : '';
+    a.href = url; a.download = 'theremin-' + namePart + Date.now() + '.mp3';
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     setTimeout(() => URL.revokeObjectURL(url), 1000);
     mp3Chunks = [];
@@ -527,7 +528,6 @@
     const name = inp?.value.trim() || '';
     if (!name) { inp?.focus(); return; }
     userName = name;
-    localStorage.setItem('pond_name', name);
     unlockAudio();
     document.getElementById('name-modal-backdrop')?.classList.remove('visible');
   }
@@ -536,10 +536,8 @@
     document.getElementById('name-confirm-btn')?.addEventListener('click', confirmName);
     const inp = document.getElementById('name-input');
     inp?.addEventListener('keydown', e => { if (e.key === 'Enter') confirmName(); });
-    if (!userName){
-      document.getElementById('name-modal-backdrop')?.classList.add('visible');
-      setTimeout(() => inp?.focus(), 80);
-    }
+    document.getElementById('name-modal-backdrop')?.classList.add('visible');
+    setTimeout(() => inp?.focus(), 80);
   }
 
   // ----- pointer handling -----
