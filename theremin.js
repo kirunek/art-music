@@ -194,8 +194,7 @@
     const blob = new Blob(mp3Chunks, { type: 'audio/mp3' });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
-    const namePart = userName ? userName.toLowerCase().replace(/\s+/g, '-') + '-' : '';
-    a.href = url; a.download = 'theremin-' + namePart + Date.now() + '.mp3';
+    a.href = url; a.download = (userName || 'theremin') + '.mp3';
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     setTimeout(() => URL.revokeObjectURL(url), 1000);
     mp3Chunks = [];
