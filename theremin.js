@@ -156,6 +156,14 @@
   let mp3Encoder = null;
   let mp3Chunks = [];
   let isRecording = false;
+  let recStartTime = null;
+  let recTickTimer = null;
+  let countdownTimer = null;
+
+  function formatDuration(ms){
+    const totalSec = Math.floor(ms / 1000);
+    return Math.floor(totalSec / 60) + ':' + String(totalSec % 60).padStart(2, '0');
+  }
 
   function startRecording(){
     if (isRecording || !window.lamejs) return;
@@ -179,11 +187,15 @@
       if (buf.length > 0) mp3Chunks.push(new Uint8Array(buf));
     };
     isRecording = true;
+    recStartTime = Date.now();
+    recTickTimer = setInterval(updateRecBtn, 1000);
     updateRecBtn();
   }
 
   function stopRecording(){
     if (!isRecording) return;
+    clearInterval(recTickTimer); recTickTimer = null;
+    recStartTime = null;
     recProcessor.disconnect(); recProcessor.onaudioprocess = null; recProcessor = null;
     recSilent.disconnect(); recSilent = null;
     const tail = mp3Encoder.flush();
@@ -200,18 +212,43 @@
     mp3Chunks = [];
   }
 
+  function startCountdown(){
+    const btn = document.getElementById('rec-btn');
+    if (!btn || isRecording) return;
+    btn.disabled = true;
+    let count = 3;
+    const tick = () => {
+      if (count > 0){
+        btn.innerHTML = `<span>${count}</span>`;
+        count--;
+        countdownTimer = setTimeout(tick, 1000);
+      } else {
+        btn.disabled = false;
+        startRecording();
+      }
+    };
+    tick();
+  }
+
   function toggleRecording(){
-    if (isRecording) stopRecording(); else startRecording();
+    if (isRecording){
+      stopRecording();
+    } else {
+      clearTimeout(countdownTimer);
+      startCountdown();
+    }
   }
 
   function updateRecBtn(){
     const btn = document.getElementById('rec-btn');
     if (!btn) return;
     btn.classList.toggle('recording', isRecording);
-    const icon = isRecording
-      ? `<svg viewBox="0 0 24 24" width="12" height="12"><rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor"/></svg>`
-      : `<svg viewBox="0 0 24 24" width="12" height="12"><circle cx="12" cy="12" r="7" fill="currentColor"/></svg>`;
-    btn.innerHTML = icon + `<span>${isRecording ? strings.recStop : strings.recStart}</span>`;
+    if (isRecording && recStartTime){
+      const elapsed = formatDuration(Date.now() - recStartTime);
+      btn.innerHTML = `<svg viewBox="0 0 24 24" width="12" height="12"><rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor"/></svg><span>${elapsed} ${strings.recStop}</span>`;
+    } else {
+      btn.innerHTML = `<svg viewBox="0 0 24 24" width="12" height="12"><circle cx="12" cy="12" r="7" fill="currentColor"/></svg><span>${strings.recStart}</span>`;
+    }
   }
 
   // ----- room / WebSocket -----
