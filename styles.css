@@ -404,6 +404,7 @@ button.pill.danger:hover{ background: rgba(255,90,90,0.15); }
   transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 .ctrl-btn:hover{ background: var(--control-bg-hover); color: var(--ink-soft); }
+.ctrl-btn[hidden]{ display: none; }
 .ctrl-btn.active{
   background: rgba(190,220,255,0.10);
   border-color: rgba(190,220,255,0.35);

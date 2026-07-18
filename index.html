@@ -62,7 +62,7 @@
     <div class="sound-selector" id="sound-selector"></div>
 
     <div class="theremin-controls">
-      <button class="ctrl-btn" id="pin-btn">
+      <button class="ctrl-btn" id="pin-btn" hidden>
         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M12 2C9.24 2 7 4.24 7 7c0 3.87 5 11 5 11s5-7.13 5-11c0-2.76-2.24-5-5-5z"/>
           <circle cx="12" cy="7" r="2"/>
@@ -87,7 +87,7 @@
   </div>
 </div>
 
-<div class="modal-backdrop visible" id="room-modal-backdrop">
+<div class="modal-backdrop" id="room-modal-backdrop">
   <div class="modal">
     <p class="modal-msg" id="room-modal-title">Введіть код кімнати</p>
     <div class="room-modal-row">
@@ -97,6 +97,17 @@
     </div>
     <div id="room-error" class="room-error-msg" hidden></div>
     <button class="solo-btn" id="solo-btn">Грати самому</button>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="name-modal-backdrop">
+  <div class="modal">
+    <p class="modal-msg" id="name-modal-title">Як вас звати?</p>
+    <div class="room-modal-row">
+      <input class="room-input" id="name-input" type="text" placeholder="ваше ім'я"
+             maxlength="32" autocomplete="given-name" />
+      <button class="pill" id="name-confirm-btn"><span id="name-confirm-label">Продовжити</span></button>
+    </div>
   </div>
 </div>
 

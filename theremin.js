@@ -38,6 +38,7 @@
     { id: 'square',   type: 'square',   en: 'Organ',   ua: 'Орган' },
   ];
   let currentSound = 'triangle';
+  let userName = localStorage.getItem('pond_name') || '';
 
   // ----- audio -----
   let audioCtx = null;
@@ -350,6 +351,9 @@
       pinMode: 'Notes', recStart: 'Record', recStop: 'Stop',
       loud: 'loud', silent: 'silent', high: 'high', low: 'low',
       langSwitch: 'UA',
+      nameTitle: 'What is your name?',
+      namePlaceholder: 'your name',
+      nameConfirm: 'Continue',
     },
     ua: {
       join: 'Увійти',
@@ -363,6 +367,9 @@
       pinMode: 'Ноти', recStart: 'Запис', recStop: 'Зупинити',
       loud: 'гучно', silent: 'тихо', high: 'високо', low: 'низько',
       langSwitch: 'EN',
+      nameTitle: 'Як вас звати?',
+      namePlaceholder: 'ваше ім\'я',
+      nameConfirm: 'Продовжити',
     },
   };
 
@@ -370,18 +377,24 @@
   let strings = LANGS.ua;
 
   function applyStrings(){
-    const langBtn    = document.getElementById('langbtn');
-    const joinLabel  = document.getElementById('room-join-label');
-    const inp        = document.getElementById('room-input');
-    const modalTitle = document.getElementById('room-modal-title');
-    const soloBtn    = document.getElementById('solo-btn');
-    const pinSpan    = document.querySelector('#pin-btn span');
-    if (langBtn)    langBtn.textContent    = strings.langSwitch;
-    if (joinLabel)  joinLabel.textContent  = strings.join;
-    if (inp)        inp.placeholder        = strings.roomPlaceholder;
-    if (modalTitle) modalTitle.textContent = strings.modalTitle;
-    if (soloBtn)    soloBtn.textContent    = strings.playAlone;
-    if (pinSpan)    pinSpan.textContent    = strings.pinMode;
+    const langBtn         = document.getElementById('langbtn');
+    const joinLabel       = document.getElementById('room-join-label');
+    const inp             = document.getElementById('room-input');
+    const modalTitle      = document.getElementById('room-modal-title');
+    const soloBtn         = document.getElementById('solo-btn');
+    const pinSpan         = document.querySelector('#pin-btn span');
+    const nameTitleEl     = document.getElementById('name-modal-title');
+    const nameInput       = document.getElementById('name-input');
+    const nameConfirmLabel = document.getElementById('name-confirm-label');
+    if (langBtn)          langBtn.textContent          = strings.langSwitch;
+    if (joinLabel)        joinLabel.textContent        = strings.join;
+    if (inp)              inp.placeholder              = strings.roomPlaceholder;
+    if (modalTitle)       modalTitle.textContent       = strings.modalTitle;
+    if (soloBtn)          soloBtn.textContent          = strings.playAlone;
+    if (pinSpan)          pinSpan.textContent          = strings.pinMode;
+    if (nameTitleEl)      nameTitleEl.textContent      = strings.nameTitle;
+    if (nameInput)        nameInput.placeholder        = strings.namePlaceholder;
+    if (nameConfirmLabel) nameConfirmLabel.textContent = strings.nameConfirm;
     updatePlayersDisplay();
     buildSoundSelector();
     updateRecBtn();
@@ -506,6 +519,27 @@
     });
     document.getElementById('pin-btn')?.addEventListener('click', togglePinMode);
     document.getElementById('rec-btn')?.addEventListener('click', toggleRecording);
+  }
+
+  // ----- name modal -----
+  function confirmName(){
+    const inp = document.getElementById('name-input');
+    const name = inp?.value.trim() || '';
+    if (!name) { inp?.focus(); return; }
+    userName = name;
+    localStorage.setItem('pond_name', name);
+    unlockAudio();
+    document.getElementById('name-modal-backdrop')?.classList.remove('visible');
+  }
+
+  function bindNameModal(){
+    document.getElementById('name-confirm-btn')?.addEventListener('click', confirmName);
+    const inp = document.getElementById('name-input');
+    inp?.addEventListener('keydown', e => { if (e.key === 'Enter') confirmName(); });
+    if (!userName){
+      document.getElementById('name-modal-backdrop')?.classList.add('visible');
+      setTimeout(() => inp?.focus(), 80);
+    }
   }
 
   // ----- pointer handling -----
@@ -645,6 +679,7 @@
     initialized = true;
     resize();
     window.addEventListener('resize', resize);
+    bindNameModal();
     bindRoomUI();
     applyStrings();
     draw();
